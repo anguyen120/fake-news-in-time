@@ -1,0 +1,7 @@
+matplotlib
+newspaper3k
+nltk
+pandas
+pymongo
+scrapy
+seaborn
