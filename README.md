@@ -61,11 +61,11 @@ The project has been devised into three steps:
 		* *One could avoid using the separated crawlers by using* `article.py spider`*, which is a combination of the two spiders. It is able to both collect and filter urls from Wayback CDX Server API snapshots then crawl the articles' url. It avoids the insertions in urls collection. (At this time, it has not been fully tested for functionality.)*
 2.  **Text Analytics and Natural Language Processing (NLP)**
 	* This project employs Check-It's<sup>1</sup> feature engineering component. It divides linguistic features into:
-		1. Part-of-Speech
-		2. Readability and Vocabulary Richness
-		3. Sentiment Analysis
-		4. Surface and Syntax
-		5. Punctuation
+		* Part-of-Speech
+		* Readability and Vocabulary Richness
+		* Sentiment Analysis
+		* Surface and Syntax
+		* Punctuation
 	* *Currently, the code for the feature engineering is not publicly available, but this repository will update when it has become available. For now, this [article's](https://www.analyticsvidhya.com/blog/2018/02/the-different-methods-deal-text-data-predictive-python/) sentiment analysis section provides an alternative to Check-It's* sentiment score.
 3.  **Statistical Analysis on Time-series Data** 
 	* This process takes in the outputted CVS file based from the extracted features from the previous step. By using [pandas](https://pandas.pydata.org/) library to convert the CVS file into a data frame, [Matplotlib](https://matplotlib.org/) and [seaborn](https://seaborn.pydata.org/) library handles plotting the data into a time-series graphs. To make statistical analysis from the plots, one must apply their knowledge and intuition to approach a conclusion. 
