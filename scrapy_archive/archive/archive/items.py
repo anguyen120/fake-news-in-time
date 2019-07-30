@@ -10,6 +10,5 @@ import scrapy
 
 class ArchiveItem(scrapy.Item):
     domain = scrapy.Field()
-    domain_url = scrapy.Field()
     fake = scrapy.Field()
     timestamp = scrapy.Field()
