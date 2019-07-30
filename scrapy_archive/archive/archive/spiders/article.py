@@ -18,8 +18,6 @@ It uses the site string to check if the documents' urls matches web.archive.org 
 This helps not processing articles from third party links 
 ==========
 """
-
-
 def urls_filter(aggregation, site):
     urls = []
 
@@ -44,8 +42,6 @@ word_count function takes in a string of the article text
 Using nltk's tokenizer, the function will return a bool based off of the word count against the configured min_word_count
 ==========
 '''
-
-
 def word_count(article_text):
     word_counter = 0
     article_sentences = sent_tokenize(article_text)
