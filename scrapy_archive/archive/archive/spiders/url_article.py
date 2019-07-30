@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import heapq
+import itertools
 import re
 import sys
 from itertools import count
@@ -9,26 +10,30 @@ import scrapy
 from archive.items import ArchiveItem
 from newspaper import Article
 from nltk.tokenize import sent_tokenize, word_tokenize
-from scrapy.linkextractors import LinkExtractor
-
 
 """
 ==========
-urls_filter function will receive in the list object string of url and the ArchiveItem object
+urls_filter function will receive in the list object of the aggregation from MongoDB and a string of the site
 It uses the site string to check if the documents' urls matches web.archive.org snapshot url format
 This helps not processing articles from third party links 
 ==========
 """
-def urls_filter(urls, data):
-    date = data.get('timestamp')[:8]
+def urls_filter(aggregation, site):
+    urls = []
 
-    # We check if the urls follows the format of "https://web.archive.org/web/{date}(hhmmss)/{domain}/*"
-    url_format = re.compile(
-        r'https:\/\/web\.archive\.org\/web\/' + re.escape(
-            date) + r'\d{6}\/(?:http(?:s)?:\/\/)?(?:w{3}.)?' + re.escape(
-            data.get('domain')) + r'\/(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
+    for document in aggregation:
+        item_urls = list(itertools.chain(*document.get('urls')))
+        date = document.get('_id').get('timestamp')[:8]
 
-    return list(filter(url_format.search, urls))
+        # We check if the urls follows the format of "https://web.archive.org/web/{date}(hhmmss)/{domain}/*"
+        filter_exp = re.compile(
+            r'https:\/\/web\.archive\.org\/web\/' + re.escape(
+                date) + r'\d{6}\/(?:http(?:s)?:\/\/)?(?:w{3}.)?' + re.escape(
+                site) + r'\/(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
+        filter_urls = filter(filter_exp.search, item_urls)
+        urls.extend(filter_urls)
+
+    return urls
 
 
 '''
@@ -47,13 +52,14 @@ def word_count(article_text):
     return word_counter >= cfg.min_word_count
 
 
-class ArticleSpider(scrapy.Spider):
-    name = 'article'
+class UrlArticleSpider(scrapy.Spider):
+    name = 'url_article'
     allowed_domains = ['web.archive.org']
 
     def start_requests(self):
-        fake = cfg.fake
+        # Read in sites from list
         real = cfg.real
+        fake = cfg.fake
 
         # We combine and distribute the real and fake lists in a round robin fashion
         sites = set([x[1] for x in heapq.merge(zip(count(0, len(fake)), real), zip(count(0, len(real)), fake))])
@@ -63,38 +69,22 @@ class ArticleSpider(scrapy.Spider):
             data['domain'] = site
             data['fake'] = site in fake
 
-            # We ONLY collect url of working snapshots (status code of 200) by checking archive's cdx query
-            url = 'http://web.archive.org/cdx/search/cdx?url={site}&from={start_date}&to={end_date}&filter=statuscode:200'.format(
-                site=site, start_date=cfg.start_date, end_date=cfg.end_date)
-            yield scrapy.Request(url=url, callback=self.parse_cdx, meta={'data': data})
+            pipeline = [
+                {'$match': {'domain': site, 'fake': data.get('fake')}},
+                {'$project': {'_id': 0, 'year': 1, 'fake': 1, 'domain': 1, 'urls': 1, 'timestamp': 1}},
+                {'$group': {'_id': {'year': '$year', 'timestamp': '$timestamp', 'fake': '$fake', 'domain': '$domain'},
+                            'urls': {'$push': '$urls'}}}
+            ]
 
-    def parse_cdx(self, response):
-        data = response.meta['data']
+            aggregation = list(cfg.urls_collection.aggregate(pipeline, allowDiskUse=cfg.allowDiskUse))
 
-        # Filter out for latest timestamp of the day
-        timestamps = re.findall(r'\d{14}', response.body.decode("utf-8"))
-        timestamps = list(set([timestamp[:8] for timestamp in timestamps]))
+            # Access the objects' urls list and filter urls
+            urls = urls_filter(aggregation, site)
 
-        # Grab article urls based off of timestamp snapshot of site
-        for timestamp in timestamps:
-            url = 'https://web.archive.org/web/{timestamp}/{domain}'.format(timestamp=timestamp,
-                                                                            domain=data.get('domain'))
-            data['timestamp'] = timestamp
-            yield scrapy.Request(url, callback=self.extract_links, meta={'data': data})
+            for url in urls:
+                yield scrapy.Request(url=url, callback=self.parse_article, meta={'data': data})
 
-    def extract_links(self, response):
-        data = response.meta['data']
-
-        # List of the link objects from the homepage
-        links = LinkExtractor(canonicalize=True, unique=True).extract_links(response)
-
-        urls = [link.url for link in links]
-
-        urls = urls_filter(urls, data)
-
-        for url in urls:
-            yield scrapy.Request(url, callback=self.parse_article, meta={'data': data})
-
+    # Newspaper3k handles extracting article
     @staticmethod
     def parse_article(response):
         # Some links are not articles so we need to handle it
@@ -115,6 +105,7 @@ class ArticleSpider(scrapy.Spider):
             article_text = re.sub('(snip)', '', article.text)
 
             data = response.meta['data']
+            timestamp = re.search(r'\d{14}', response.url).group()
 
             article_data = {
                 'title': article.title,
@@ -122,8 +113,8 @@ class ArticleSpider(scrapy.Spider):
                 'publish_date': article.publish_date,
                 'content': article_text,
                 'domain': data.get('domain'),
-                'timestamp': data.get('timestamp'),
-                'year': data.get('domain')[:4],
+                'timestamp': timestamp,
+                'year': int(timestamp[:4]),
                 'url': response.url,
                 'fake': data.get('fake')
             }
