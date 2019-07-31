@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 
+
 '''
 ==========
 MongoDB settings
@@ -18,6 +19,7 @@ if filter_on:
 
 # allowDiskUse for pipeline aggregation from MongoDB
 allowDiskUse = True
+
 
 '''
 ==========
@@ -41,6 +43,7 @@ with open(fake_list, 'r') as file:
     for line in file:
         fake.append(line.strip())
 
+
 '''
 ==========
 Collect articles based of these range
@@ -49,6 +52,7 @@ Collect articles based of these range
 # The ranges are inclusive and are specified in the same 1 to 14 digit format used for wayback captures: yyyyMMddhhmmss
 start_date = 2015
 end_date = 2019
+
 
 '''
 ==========

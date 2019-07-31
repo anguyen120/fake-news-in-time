@@ -3,7 +3,7 @@ import heapq
 import re
 from itertools import count
 
-import config as cfg
+import scrapy_config as cfg
 import scrapy
 from archive.items import ArchiveItem
 from scrapy.linkextractors import LinkExtractor
