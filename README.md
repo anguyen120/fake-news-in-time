@@ -188,7 +188,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 <!-- CONTACT -->  
 ## Contact  
   
-Alan Nguyen - anguyen120@protonmail.com  
+Alan Nguyen - anguyen120@pm.me
   
 Project Link: [https://github.com/anguyen120/fake-news-in-time](https://github.com/anguyen120/fake-news-in-time)  
   
